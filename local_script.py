@@ -9,6 +9,7 @@ startTime = datetime.datetime.now()
 
 session = boto3.session.Session(region_name='us-east-1')
 
+# kicking off the workflow, calling controller lambda
 client_lambda = session.client('lambda')
 response = client_lambda.invoke(
   FunctionName='lambda_calc_exposures',
@@ -18,12 +19,14 @@ s3_client = session.client('s3')
 s3_resource = session.resource('s3')
 
 file_count = 0
+# waiting for a minute for files to appear in S3 bucket
 time.sleep(60)
 while file_count < 500:
     filenames = [e['Key'] for p in s3_client.get_paginator("list_objects_v2").paginate(Bucket='calc-exposures-out') for e in p['Contents']]
     file_count = len(filenames)
     time.sleep(5)
 
+# at this point, its all done, get the exposures
 exposures = np.zeros(shape=(500, 262), dtype=float)
 filenames = [e['Key'] for p in s3_client.get_paginator("list_objects_v2").paginate(Bucket='calc-exposures-out') for e in p['Contents']]
 for f in filenames:
@@ -44,3 +47,4 @@ EPE = np.mean(positiveExposures, axis=0)
 negativeExposures = exposures.copy()
 negativeExposures[negativeExposures > 0.0] = 0.0
 ENE = np.mean(negativeExposures, axis=0)
+
